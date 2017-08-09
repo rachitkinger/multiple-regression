@@ -1,0 +1,122 @@
+---
+title: "Multiple Regression Diagnostics"
+author: "Rachit Kinger"
+date: "8 August 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Diagnostics in Multiple Regression
+
+**Check linearity**  
+Linear regression using least squares method assumes that DV is linearly predicted by IV. So first thing to do is to do is run a scatter plot of DV with each IV and see if there is a linear relation. It may not be apparent immediately so try some transformations like $DV\sim log(IV)$, $log(DV)\sim IV$, $DV\sim(IV)^{2}$, etc.  
+
+**Check residuals**  
+*normal distribution:* \<read later in chapter and then enter information here>\    
+*mean = 0* the errors ($\epsilon_i$) must have mean zero.  
+*constant variance:* the errors ($\epsilon_i$) must have a constant variation, also called *homogeniety* or *homoscedasticity*.   
+*independenc:* the errors ($\epsilon_i$) must be independent  
+  
+**Check IVs**  
+All IVs are to be independent of each other. If there is collinearity it needs to be dealth with appropriately.  
+
+## Graphical Analysis
+### 1. Graphs before the regression
+Graphical analysis is very useful and should give us insights even before we begin analysis. Graphical analysis can be broken down into two types  
+
+1. Univariate or One-dimensional graphs  
+2. Bivariate or Two-dimensional graphs  
+  
+  
+#### One-dimensional graphs    
+* Histograms  
+* Stem and leaf plots  
+* Dot plot  
+* Box plot  
+
+Example of stem and leaf plot  
+```{r stem and leaf plot}
+stem(mtcars$mpg)
+```
+  
+  
+Example of a dot plot
+```{r dot plot}
+dotchart(mtcars$mpg, labels = row.names(mtcars), cex = 0.7)
+```
+  
+  
+#### Two-dimensional plots  
+Should evaluate all dimensions of the data but of course this is only possible with few variables. The most common analysis is pair-wise scatter plots - again, only feasible with few variables.  
+
+* Pair-wise scatter matrix of draftsman's plot  
+* Simple correltaion matrix  
+
+  
+A simple correlation matrix can be created by this `cor(mtcars[,1:4])`. But sometimes you want to see correlations along with a scatter plot. This is called a *draftsman's plot*. 
+
+```{r scatter matrix with correlation, warning = FALSE}
+library(GGally)
+ggpairs(mtcars[,1:4])
+```
+  
+  
+When using correlations to detect relationships remember two things:  
+1. correlations can only detect linear relationships, so if the relationship are non-linear we need another method  
+2. correlations can be heavily influenced by one or two outliers  
+Therefore, don't assume that in the absence of a linear pattern (or correlation) there is no linear relationship when running multiple regression. Sometimes the linear regression exists between two variables after having adjusted for a 3rd variable. Try looking at 3D rotating plots for this. This can be useful. Use the `rgl` or `Rcmdr` library for doing this in R. Here is an example  
+  
+```{r rotating plot, eval = FALSE}
+ library(rgl)  
+ plot3d(mtcars$wt, mtcars$disp, mtcars$mpg, col = "red", size = 3)
+```
+  
+  
+### 2. Graphs after regression  
+* Normal probability plot i.e. QQ plot. This should be a straight line  
+* Scatter plots of standardized residual against each of hte predictor variables. These plots should look random and there shouldn't be any pattern.  
+* Scatter plot of standardized residuals versus fitted values. This plot should also appear random.  
+* Index plot of standardized residuals. This plot shows the standardized residuals versus the observation number. The order of residuals should be impartial to the order of observations, so this should also be random.  
+
+
+#### Leverage and Influence  
+To understand leverage and influence take a look at this graph.
+
+```{r leverage influence, echo=FALSE}
+x <- rnorm(100, mean = 0, sd = 2 )
+error <- rnorm(100, mean = 0, sd = .2)
+y <- x + error
+plot(x, y, frame = FALSE, xlim = c(min(x), 10), ylim = c(min(y), 10), pch = 21, col = "blue", bg = "sky blue", cex = 1.5)
+abline(lm(y~x), col = "black", lwd = 2)
+points(x = c(0, 0, 9, 9), y = c(0, 9, 9, 0), pch = 21, col = "red", bg = "orange", cex = 1.5)
+text(x = c(0,0,9,9), y = c(-0.7,8.3,8.3,-0.7), labels = c("1", "2", "3", "4"), col = "red", cex = 1)
+text(x = c(0,0,9,9), y = c(-1.5,7.5,7.5,-1.5), labels = c("Low Leverage", "Low Leverage", "High Leverage", "High Leverage"), col = "black", cex = .7)
+text(x = c(0,0,9,9), y = c(-2.3,6.7,6.7,-2.3), labels = c("Low Influence", "High Influence", "Low Influence", "High Influence"), col = "black", cex =.7)
+
+```
+  
+  
+Think of **_leverage_** as something that is an outlier on X-axis.  
+Think of **_influence_** as something that is an outlier on the Y-axis.  
+Both, high leverage and high influence points can impact the regression equation. So they need special attention. To understand how much they are impacting the regression we can run a regression with and without these points to see how much our regression co-efficientes have changed.  
+
+To fully list all the methods to probe influence points run `?influence.measures` in the console but here are a few important ones. Residuals, $Y_{i}-\widehat{Y}$, need to be standardised and there are two ways to standardise them. Both of these ways standardise by dividing the $~i~^{th}$ residual by the standard deviation. However, where they differ is in wether they include the $~i~^{th}$ variable in the calculation. They are both referred to as studentized but one follows an exact `t-distribution` while the other does not.  
+
+
+i. `rstandard` - residuals are divided by their standard deviations, also called *internally standardized* for this reason  
+ii. `rstudent` - resiuals are divided by their standard deviations, but the $~i~^{th}$ data point was deleted in the calculation of the standard deviation. This follows an exact `t-distribution`. Also called *externally standardized* for this reason  
+
+
+Below are some of the common ways to probe for **influence**.  
+
+* `dffits` - change in the predicted response, $\widehat{Y}$ when the $i^{th}$ point is deleted in the fitted model  
+* `dfbetas` - change in individual coeffients, $\beta_{i}$, when the $i^{th}$ point is deleted in fitting the model  
+* `cooks.distance` - overall change in the coefficients when the $i^{th}$ point is deleted  
+* PRESS residuals - these are calculated by `resid(fit)/(1 - hatvalues(fit))`. This measures the difference in the response and the predicted response at data point $i$, when it is not included in the model fitting.  
+
+
+  
+**Leverage** is largely measured by one quantity, so called *hat diagonals*, which can be obtained by `hatvalues()`. The hat values are between 0 and 1 and larger values indicated greater (potential for) leverage.  
